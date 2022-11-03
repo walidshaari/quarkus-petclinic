@@ -2,7 +2,5 @@
 
 printf "\n\n######## Deploying Quarkus Petclinic ########\n"
 
-kubectl apply -f src/main/kubernetes/deployment.yml
-kubectl wait --for=condition=available --timeout=60s deployment/quarkus-petclinic
+./mvnw install -Dquarkus.kubernetes.deploy=true -DskipTests=true
 
-kubectl get services
