@@ -2,5 +2,4 @@
 
 printf "\n\n######## Deploying Quarkus Petclinic ########\n"
 
-./mvnw install -Dquarkus.kubernetes.deploy=true -DskipTests=true
-
+./mvnw install -Dquarkus.kubernetes.deploy=true -DskipTests=true -Dquarkus.kubernetes-client.trust-certs=true
