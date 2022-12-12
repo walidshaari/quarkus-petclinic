@@ -16,6 +16,6 @@
 
 == ENVIRONMENT VARIABLES
 
-SSO_HOST : default to localhost:8080
+SSO_HOST : default to localhost:8443
 
 SSO_CLIENT_SECRET : default to "secret"
