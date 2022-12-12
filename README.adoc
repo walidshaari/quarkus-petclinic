@@ -7,20 +7,15 @@
 ./mvnw compile quarkus:dev
 ----
 
-== Kubernetes
+== OCP
 
 [source, bash]
 ----
-./db.sh
-
-./petclinic.sh
+./ocp-deploy.sh
 ----
 
-== Create a new Container
+== ENVIRONMENT VARIABLES
 
-Need to have an account to quay.io with writting permissions to rhdevelopers org.
+SSO_HOST : default to localhost:8080
 
-[source, bash]
-----
-./mvnw package -DskipTests -Dquarkus.container-image.push=true
-----
+SSO_CLIENT_SECRET : default to "secret"
