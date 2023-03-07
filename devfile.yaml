@@ -5,8 +5,8 @@ projects:
   - name: quarkus-petclinic
     source:
       type: git
-      location: 'https://github.com/redhat-developer-demos/quarkus-petclinic.git'
-      branch: master
+      location: 'http://gogs.demo-cicd.svc.cluster.local:3000/gogs/quarkus-petclinic.git'
+      branch: cnd
 components:
   - type: chePlugin
     id: redhat/quarkus-java11/latest
