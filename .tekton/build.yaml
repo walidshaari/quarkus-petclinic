@@ -3,30 +3,13 @@ kind: PipelineRun
 metadata:
   name: quarkus-petclinic-build
   annotations:
-    # The event we are targeting as seen from the webhook payload
-    # this can be an array too, i.e: [pull_request, push]
     pipelinesascode.tekton.dev/on-event: "[pull_request, push]"
-
-    # The branch or tag we are targeting (ie: main, refs/tags/*)
-    pipelinesascode.tekton.dev/on-target-branch: "main"
-
-    # Fetch the git-clone task from hub, we are able to reference later on it
-    # with taskRef and it will automatically be embedded into our pipeline.
+    pipelinesascode.tekton.dev/on-target-branch: "cnd"
     pipelinesascode.tekton.dev/task: "[git-clone:0.8]"
     pipelinesascode.tekton.dev/task-1: "https://raw.githubusercontent.com/tektoncd/catalog/main/task/maven/0.2/maven.yaml"
-
-
-    # You can add more tasks in here to reuse, browse the one you like from here
-    # https://hub.tekton.dev/
-    # example:
-    # pipelinesascode.tekton.dev/task-2: "[maven, buildah]"
-
-    # How many runs we want to keep attached to this event
     pipelinesascode.tekton.dev/max-keep-runs: "5"
 spec:
   params:
-    # The variable with brackets are special to Pipelines as Code
-    # They will automatically be expanded with the events from Github.
     - name: repo_url
       value: "{{ repo_url }}"
     - name: revision
@@ -38,8 +21,12 @@ spec:
     workspaces:
       - name: source
       - name: basic-auth
+    results:
+      - name: APP_IMAGE_DIGETST
+        description: The image digest built in the pipeline
+        value: $(tasks.build-image.results.IMAGE_DIGEST)
     tasks:
-      - name: fetch-repository
+      - name: source-clone
         taskRef:
           name: git-clone
         workspaces:
@@ -52,22 +39,146 @@ spec:
             value: $(params.repo_url)
           - name: revision
             value: $(params.revision)
-      - name: build
+          - name: depth
+            value: "0"
+          - name: subdirectory
+            value: quarkus-petclinic
+      - name: mvn-config
+        taskRef: 
+          name: mvn-config
         runAfter:
-          - fetch-repository
+          - source-clone
         workspaces:
-          - name: maven-settings
-            workspace: source
-          - name: source
-            workspace: source
+        - name: workspace
+          workspace: source
+      - name: unit-tests
         taskRef:
           name: maven
+        runAfter:
+          - mvn-config
+        workspaces:
+        - name: source
+          workspace: source
+        - name: maven-settings
+          workspace: source
         params:
-          - name: GOALS
-            value:
-              - clean
-              - package
-
+        - name: GOALS
+          value: ["package", "-f", "quarkus-petclinic"]
+      - name: code-analysis
+        taskRef:
+          name: maven
+        runAfter:
+          - unit-tests
+        workspaces:
+        - name: source
+          workspace: source
+        - name: maven-settings
+          workspace: source
+        params:
+        - name: GOALS
+          value:
+          - install
+          - sonar:sonar
+          - -f
+          - quarkus-petclinic
+          - -Dsonar.host.url=http://sonarqube:9000
+          - -Dsonar.userHome=/tmp/sonar
+          - -DskipTests=true
+      - name: security-scan
+        taskRef:
+          name: maven
+        runAfter:
+          - unit-tests
+        workspaces:
+        - name: source
+          workspace: source
+        - name: maven-settings
+          workspace: source
+        params:
+        - name: GOALS
+          value: ["--version", "-f", "quarkus-petclinic"]
+      - name: release-app
+        taskRef:
+          name: maven
+        runAfter:
+          - code-analysis
+          - security-scan
+        workspaces:
+        - name: source
+          workspace: source
+        - name: maven-settings
+          workspace: source
+        params:
+        - name: GOALS
+          value:
+          - deploy
+          - -f 
+          - quarkus-petclinic
+          - -DskipTests=true
+          - -DaltDeploymentRepository=nexus::default::http://nexus:8081/repository/maven-releases/
+          - -DaltSnapshotDeploymentRepository=nexus::default::http://nexus:8081/repository/maven-snapshots/
+          - -Durl=http://nexus:8081/repository/maven-releases/
+          - -DrepositoryId=nexus
+      - name: build-image
+        taskRef:
+          name: s2i-java
+          kind: ClusterTask
+        runAfter:
+        - release-app
+        params:
+          - name: TLSVERIFY
+            value: "false"
+          - name: MAVEN_MIRROR_URL
+            value: http://nexus:8081/repository/maven-public/
+          - name: PATH_CONTEXT
+            value: quarkus-petclinic/target
+          - name: IMAGE
+            value: image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/quarkus-petclinic:latest
+        workspaces:
+        - name: source
+          workspace: source
+      - name: update-manifests
+        runAfter:
+        - build-image
+        taskRef:
+          name: git-update-deployment
+        params:
+          - name: GIT_REPOSITORY
+            value: https://github.com/aolle/quarkus-petclinic-config
+          - name: GIT_USERNAME
+            value: gitea
+          - name: GIT_PASSWORD
+            value: openshift
+          - name: CURRENT_IMAGE
+            value: quay.io/aolle/quarkus-petclinic:latest
+          - name: NEW_IMAGE
+            value: image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/quarkus-petclinic
+          - name: NEW_DIGEST
+            value: "$(tasks.build-image.results.IMAGE_DIGEST)"
+          - name: KUSTOMIZATION_PATH
+            value: environments/dev
+        workspaces:
+        - name: workspace
+          workspace: source
+      - name: pr-promote
+        runAfter:
+        - update-manifests
+        taskRef:
+          name: create-promote-pull-request
+        params:
+          - name: GIT_REPOSITORY
+            value: https://github.com/aolle/quarkus-petclinic-config
+          - name: GIT_USERNAME
+            value: gitea
+          - name: GIT_PASSWORD
+            value: openshift
+          - name: COPY_FROM_PATH
+            value: environments/dev
+          - name: COPY_TO_PATH
+            value: environments/stage
+        workspaces:
+        - name: workspace
+          workspace: source
   workspaces:
   - name: source
     volumeClaimTemplate:
@@ -77,8 +188,6 @@ spec:
         resources:
           requests:
             storage: 1Gi
-  # This workspace will inject secret to help the git-clone task to be able to
-  # checkout the private repositories
   - name: basic-auth
     secret:
       secretName: "{{ git_auth_secret }}"
