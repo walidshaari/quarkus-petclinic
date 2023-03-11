@@ -73,7 +73,7 @@ spec:
 
         pr_title = "[$(context.taskRun.name)] Promote to STAGE environment"
         pr_body = "TaskRun $(context.taskRun.name)\\nPromoting application from DEV to STAGE environment"
-        data_pr = '{"base": "master","body": "' + pr_body + '","head": "' + git_branch + '","title": "' + pr_title + '"}'
+        data_pr = '{"base": "cnd","body": "' + pr_body + '","head": "' + git_branch + '","title": "' + pr_title + '"}'
         headers = {'Content-Type': 'application/json'}
         resp = requests.post(url = giteaURL + "/api/v1/repos/" + gitea_user + "/quarkus-petclinic-config/pulls", 
                             headers = headers, 
