@@ -5,7 +5,7 @@ projects:
   - name: quarkus-petclinic
     source:
       type: git
-      location: 'http://gogs.demo-cicd.svc.cluster.local:3000/gogs/quarkus-petclinic.git'
+      location: 'http://gitea.demo-cicd.svc.cluster.local:3000/gitea/quarkus-petclinic.git'
       branch: cnd
 components:
   - type: chePlugin
