@@ -34,7 +34,7 @@ spec:
       script: |
         set -x
         rm -rf pull-request-workdir
-        git clone $(params.GIT_REPOSITORY) pull-request-workdir
+        git clone -b cnd $(params.GIT_REPOSITORY) pull-request-workdir
         cd pull-request-workdir
         git config user.email "pipelines-ci@redhat.com"
         git config user.name "pipelines-ci"
