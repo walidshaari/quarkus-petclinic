@@ -144,7 +144,7 @@ spec:
           name: git-update-deployment
         params:
           - name: GIT_REPOSITORY
-            value: https://github.com/aolle/quarkus-petclinic-config
+            value: https://github.com/walidshaari/quarkus-petclinic-config
           - name: GIT_USERNAME
             value: gitea
           - name: GIT_PASSWORD
@@ -167,7 +167,7 @@ spec:
           name: create-promote-pull-request
         params:
           - name: GIT_REPOSITORY
-            value: https://github.com/aolle/quarkus-petclinic-config
+            value: https://github.com/walidshaari/quarkus-petclinic-config
           - name: GIT_USERNAME
             value: gitea
           - name: GIT_PASSWORD
